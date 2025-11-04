@@ -10,7 +10,7 @@ const ekycSequelize = new Sequelize(
   {
     host: DB_CONFIG.EKYC.HOST,
     dialect: 'mssql',
-    logging: false
+    logging: DB_CONFIG.EKYC.LOGGING,
   }
 )
 
@@ -21,23 +21,7 @@ const crmsSequelize = new Sequelize(
   {
     host: DB_CONFIG.CRMS.HOST,
     dialect: 'mssql',
-    dialectOptions: {
-      options: {
-        requestTimeout: 300000, // 5 minutes
-        enableArithAbort: true, // Avoids deadlocks
-        encrypt: false, // Set to true if using SSL
-      },
-    },
-    pool: {
-      max: 20, // Max number of connections in the pool
-      min: 5, // Minimum connections
-      acquire: 30000, // Max time (ms) to acquire a connection
-      idle: 10000, // Time (ms) a connection can be idle before being released
-    },
-    retry: {
-      max: 3, // Number of retries for a failed query
-    },
-    logging: false, // Set to console.log for debugging
+    logging: DB_CONFIG.CRMS.LOGGING,
   }
 )
 
@@ -58,15 +42,14 @@ const redisAliases = {
 const config = redisAliases['connect']
 const client = createClient(config)
 
-client.on('error', err => console.error('Redis error:', err))
-client.on('connect', () => console.log('Connected to Redis'))
+client.on('error', err => console.error('❌ Redis error:', err))
+client.on('connect', () => console.log('💽 Connected to Redis'))
 
 export const connectRedis = async () => {
   try {
     await client.connect()
-    console.log('Main Redis client connected successfully')
   } catch (error) {
-    console.error('Error connecting main Redis client:', error)
+    console.error('❌ Error connecting main Redis client:', error)
   }
 }
 

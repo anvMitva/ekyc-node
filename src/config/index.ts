@@ -200,12 +200,14 @@ export const DB_CONFIG = {
     HOST: process.env.DB_HOST,
     USERNAME: process.env.DB_USERNAME,
     PASSWORD: process.env.DB_PASSWORD,
+    LOGGING: false,
   },
   CRMS: {
     NAME: process.env.CRMS_DB_NAME,
     HOST: process.env.CRMS_DB_HOST,
     USERNAME: process.env.CRMS_DB_USERNAME,
     PASSWORD: process.env.CRMS_DB_PASSWORD,
+    LOGGING: false,
   },
 };
 

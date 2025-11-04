@@ -36,8 +36,7 @@ export const sendOtp = async (req: Request, res: Response, next: NextFunction) =
     // otp 
     // sms
     // email
-    // activcty log
-    // ts
+    // activity log
     // service prefrence based
 
     // Commit transaction
