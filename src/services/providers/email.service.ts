@@ -1,7 +1,19 @@
-// @ts-nocheck
 import nodemailer from "nodemailer";
+import type { Transporter, SentMessageInfo } from "nodemailer";
 import logger from "../../logger/winston.logger.js";
 import { EMAIL_CONFIG, EMAIL_TEMPLATES } from "../../config/index.js";
+import type {
+  EmailConfig,
+  EmailTemplates,
+  EmailSendResult,
+  EmailHealthStatus,
+  EmailContentResult,
+  EmailMetadata,
+  EmailLogData,
+  MailOptions,
+} from "../../types/email.js";
+
+// ==================== Email Service Class ====================
 
 /**
  * Email Service Class
@@ -9,6 +21,10 @@ import { EMAIL_CONFIG, EMAIL_TEMPLATES } from "../../config/index.js";
  * Follows singleton pattern for consistent transporter usage
  */
 class EmailService {
+  private config: EmailConfig;
+  private templates: EmailTemplates;
+  private transporter: Transporter | null;
+
   constructor() {
     // Email Configuration from centralized config
     this.config = {
@@ -42,10 +58,10 @@ class EmailService {
 
   /**
    * Get or create nodemailer transporter
-   * @returns {Object} Nodemailer transporter
+   * @returns {Transporter} Nodemailer transporter
    * @private
    */
-  _getTransporter() {
+  private _getTransporter(): Transporter {
     if (!this.transporter) {
       this.transporter = nodemailer.createTransport({
         host: this.config.smtp.host,
@@ -60,11 +76,11 @@ class EmailService {
   /**
    * Build email HTML content from template
    * @param {string} templateType - Template type
-   * @param {Object} data - Replacement data
-   * @returns {Object} Subject and HTML content
+   * @param {Record<string, any>} data - Replacement data
+   * @returns {EmailContentResult} Subject and HTML content
    * @private
    */
-  _buildEmailContent(templateType, data) {
+  private _buildEmailContent(templateType: string, data: Record<string, any>): EmailContentResult {
     const template = this.templates[templateType];
     
     if (!template) {
@@ -84,15 +100,16 @@ class EmailService {
 
   /**
    * Log email API call
-   * @param {Object} logData - Log data
+   * @param {EmailLogData} logData - Log data
    * @private
    */
-  async _logApiCall(logData) {
+  private async _logApiCall(logData: EmailLogData): Promise<void> {
     try {
       // TODO: Implement API logging to database using ApiLogDB
       logger.info("Email API Call Log", logData);
     } catch (error) {
-      logger.error("Error logging email API call", { error: error.message });
+      const err = error as Error;
+      logger.error("Error logging email API call", { error: err.message });
     }
   }
 
@@ -100,11 +117,16 @@ class EmailService {
    * Send email using specified template
    * @param {string} toEmail - Recipient email address
    * @param {string} templateType - Template type
-   * @param {Object} data - Template data
-   * @param {Object} metadata - Additional metadata for logging
-   * @returns {Promise<Object>} Result object
+   * @param {Record<string, any>} data - Template data
+   * @param {EmailMetadata} metadata - Additional metadata for logging
+   * @returns {Promise<EmailSendResult>} Result object
    */
-  async sendEmail(toEmail, templateType, data = {}, metadata = {}) {
+  async sendEmail(
+    toEmail: string,
+    templateType: string,
+    data: Record<string, any> = {},
+    metadata: EmailMetadata = {}
+  ): Promise<EmailSendResult> {
     const startTime = Date.now();
 
     try {
@@ -124,14 +146,14 @@ class EmailService {
       logger.info("Sending email", { to: toEmail, templateType, subject });
 
       const transporter = this._getTransporter();
-      const mailOptions = {
+      const mailOptions: MailOptions = {
         from: this.config.from,
         to: toEmail,
         subject,
         html: htmlContent,
       };
 
-      const info = await transporter.sendMail(mailOptions);
+      const info: SentMessageInfo = await transporter.sendMail(mailOptions);
       const duration = Date.now() - startTime;
 
       await this._logApiCall({
@@ -166,12 +188,13 @@ class EmailService {
         duration,
       };
     } catch (err) {
+      const error = err as Error;
       const duration = Date.now() - startTime;
 
       await this._logApiCall({
         toEmail,
         templateType,
-        error: { message: err.message, stack: err.stack },
+        error: { message: error.message, stack: error.stack },
         status: "failed",
         duration,
         ...metadata,
@@ -179,13 +202,13 @@ class EmailService {
 
       logger.error("Error sending email", {
         to: toEmail,
-        error: err.message,
+        error: error.message,
       });
 
       return {
         success: false,
         status: "error",
-        message: err.message,
+        message: error.message,
         duration,
       };
     }
@@ -194,7 +217,7 @@ class EmailService {
   /**
    * Send signup/KYC verification OTP email
    */
-  async sendSignupEmail(toEmail, otp, metadata = {}) {
+  async sendSignupEmail(toEmail: string, otp: string, metadata: EmailMetadata = {}): Promise<EmailSendResult> {
     return await this.sendEmail(
       toEmail,
       "SIGNUP",
@@ -207,12 +230,12 @@ class EmailService {
    * Send custom email
    */
   async sendCustomEmail(
-    toEmail,
-    subject,
-    htmlContent,
-    attachments = [],
-    metadata = {}
-  ) {
+    toEmail: string,
+    subject: string,
+    htmlContent: string,
+    attachments: Array<any> = [],
+    metadata: EmailMetadata = {}
+  ): Promise<EmailSendResult> {
     const startTime = Date.now();
 
     try {
@@ -227,7 +250,7 @@ class EmailService {
       logger.info("Sending custom email", { to: toEmail, subject });
 
       const transporter = this._getTransporter();
-      const mailOptions = {
+      const mailOptions: MailOptions = {
         from: this.config.from,
         to: toEmail,
         subject,
@@ -235,7 +258,7 @@ class EmailService {
         attachments,
       };
 
-      const info = await transporter.sendMail(mailOptions);
+      const info: SentMessageInfo = await transporter.sendMail(mailOptions);
       const duration = Date.now() - startTime;
 
       await this._logApiCall({
@@ -256,16 +279,17 @@ class EmailService {
         success: true,
         status: "success",
         message: "Custom email sent successfully",
-        data: { messageId: info.messageId },
+        data: { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected },
         duration,
       };
     } catch (err) {
+      const error = err as Error;
       const duration = Date.now() - startTime;
 
       await this._logApiCall({
         toEmail,
         templateType: "CUSTOM",
-        error: { message: err.message, stack: err.stack },
+        error: { message: error.message, stack: error.stack },
         status: "failed",
         duration,
         ...metadata,
@@ -273,13 +297,13 @@ class EmailService {
 
       logger.error("Error sending custom email", {
         to: toEmail,
-        error: err.message,
+        error: error.message,
       });
 
       return {
         success: false,
         status: "error",
-        message: err.message,
+        message: error.message,
         duration,
       };
     }
@@ -288,7 +312,7 @@ class EmailService {
   /**
    * Validate email address format
    */
-  validateEmail(email) {
+  validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
@@ -296,7 +320,7 @@ class EmailService {
   /**
    * Verify SMTP connection
    */
-  async verifyConnection() {
+  async verifyConnection(): Promise<EmailSendResult> {
     try {
       const transporter = this._getTransporter();
       await transporter.verify();
@@ -305,18 +329,21 @@ class EmailService {
       
       return {
         success: true,
-        status: "connected",
+        status: "success",
         message: "SMTP connection verified successfully",
+        duration: 0,
       };
     } catch (error) {
+      const err = error as Error;
       logger.error("SMTP connection verification failed", {
-        error: error.message,
+        error: err.message,
       });
       
       return {
         success: false,
-        status: "failed",
-        message: error.message,
+        status: "error",
+        message: err.message,
+        duration: 0,
       };
     }
   }
@@ -324,7 +351,7 @@ class EmailService {
   /**
    * Get service health status
    */
-  getHealthStatus() {
+  getHealthStatus(): EmailHealthStatus {
     return {
       service: "EMAIL",
       provider: "SMTP",
@@ -342,14 +369,14 @@ class EmailService {
   /**
    * Get available email templates
    */
-  getAvailableTemplates() {
+  getAvailableTemplates(): string[] {
     return Object.keys(this.templates);
   }
 
   /**
    * Close transporter connection
    */
-  close() {
+  close(): void {
     if (this.transporter) {
       this.transporter.close();
       this.transporter = null;

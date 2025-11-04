@@ -1,9 +1,10 @@
-// @ts-nocheck
+import type { Response, NextFunction } from "express";
+import type { AuthenticatedRequest } from "../types/auth.js";
+import type { CustomError, ErrorType, ErrorLogData } from "../types/error.js";
 import {
   ConnectionError,
   DatabaseError,
   ForeignKeyConstraintError,
-  Sequelize,
   TimeoutError,
   UniqueConstraintError,
   ValidationError,
@@ -12,17 +13,21 @@ import logger from "../logger/winston.logger.js";
 import { ApiError } from "../utils/ApiError.js";
 import { SERVER_CONFIG } from "../config/index.js";
 
-const errorHandler = (err, req, res, next) => {
+export const errorHandler = (
+  err: CustomError,
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Response => {
   const username = req.user?.username || "anonymous";
   let statusCode = 500;
   let userMessage = "Something went wrong. Please try again later.";
-  let errors = [];
-  let errorType = "UNKNOWN_ERROR";
-  let logLevel = "error";
+  let errors: string[] = [];
+  let errorType: ErrorType = "UNKNOWN_ERROR";
+  let logLevel: "error" | "warn" | "info" = "error";
 
   // 1. USER-FACING ERRORS (Business Logic - from config)
   if (err.statusCode && err.message && typeof err.message === 'string') {
-
     statusCode = err.statusCode;
     userMessage = err.message;
     errors = err.errors || [];
@@ -89,9 +94,9 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Single log based on determined log level with stack trace
-  const logData = {
+  const logData: ErrorLogData = {
     errorType: errorType,
-    msgToUser : userMessage,
+    msgToUser: userMessage,
     message: err.message,
     stack: err.stack,
     statusCode: statusCode,
@@ -99,13 +104,11 @@ const errorHandler = (err, req, res, next) => {
     user: username
   };
 
-
   logger.error(logData);
-
 
   // Legacy logging format (keep for compatibility)
   const legacyLogMessage = [
-    req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress,
+    (req as any).ip || req.headers["x-forwarded-for"] || (req as any).connection?.remoteAddress,
     "||",
     username,
     "||",
@@ -133,5 +136,3 @@ const errorHandler = (err, req, res, next) => {
     })
   });
 };
-
-export { errorHandler };
