@@ -14,3 +14,114 @@ Chronological log of TypeScript migration decisions and fixes.
 	- `src/services/client.service.ts` defines structured device/lead types and explicit return contracts.
 - Renamed all files under `src/` from `.js` to `.ts` and added temporary `// @ts-nocheck` pragmas to maintain build stability while types are introduced incrementally.
 - Added `npm run migrate:list` script (`scripts/list-js.ts`) to report remaining JavaScript sources (currently zero).
+
+## 2025-11-04
+- **Provider Services Migration Complete**: All provider service files migrated to TypeScript with full type safety
+	- `src/services/providers/email.service.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Added comprehensive type definitions for EmailService class
+		- Defined interfaces: `EmailConfig`, `EmailTemplate`, `EmailSendResult`, `EmailHealthStatus`, `EmailMetadata`, `EmailLogData`, `MailOptions`
+		- Added proper type annotations for all methods (sendEmail, sendSignupEmail, sendCustomEmail, etc.)
+		- Imported `Transporter` and `SentMessageInfo` types from nodemailer
+		- Private methods now properly typed with `private` keyword
+		- All async methods have explicit `Promise` return types
+	- `src/services/providers/sms.service.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Added comprehensive type definitions for SmsService class
+		- Defined interfaces: `SmsConfig`, `SmsTemplates`, `SmsSendResult`, `SmsHealthStatus`, `SmsMetadata`, `SmsLogData`
+		- Created `SmsType` union type for SMS categories
+		- Added proper type annotations for all methods (sendSms, sendOtp, sendSignupOtp, etc.)
+		- Imported `AxiosResponse` type from axios
+		- Template functions now properly typed as `SmsTemplateFunction`
+		- All async methods have explicit `Promise<SmsSendResult>` return types
+	- `src/services/providers/kyc.service.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Converted from class-based to function-based exports with proper types
+		- Defined interfaces: `ClientKycResult`, `ApiResponseData`, `KycRecord`
+		- Added `Nullable<T>` helper type for optional values
+		- Imported `QueryTypes` from Sequelize for proper query typing
+		- Imported `AxiosResponse` type from axios
+		- Added missing `ApiError` import
+		- Both exported functions (`getClientKyc`, `insertClientKyc`) now have explicit parameter and return types
+		- Fixed Redis client type compatibility with `as any` cast (to be refined in cache service migration)
+		- Added `getTodayRemainingTime` helper function with proper return type
+
+- **Types Organization Refactor**: Restructured types folder with entity-specific type files
+	- Removed duplicate type files (email.types.ts, sms.types.ts, kyc.types.ts, controller.types.ts)
+	- Renamed type files to entity-specific names without redundant suffixes:
+		- `email.service.types.ts` → `email.ts`
+		- `sms.service.types.ts` → `sms.ts`
+		- `kyc.service.types.ts` → `kyc.ts`
+		- `newKyc.types.ts` → `newKyc.ts`
+		- `auth.middleware.types.ts` → `auth.ts`
+		- `error.middleware.types.ts` → `error.ts`
+		- `multer.middleware.types.ts` → `multer.ts`
+		- `ratelimit.middleware.types.ts` → `ratelimit.ts`
+	- Updated all import statements to use new type file paths:
+		- `from "../../types/email.service.types.js"` → `from "../../types/email.js"`
+		- `from "../../types/sms.service.types.js"` → `from "../../types/sms.js"`
+		- `from "../../types/kyc.service.types.js"` → `from "../../types/kyc.js"`
+		- `from "../types/controller.types.js"` → `from "../types/newKyc.js"`
+	- Cleared `src/types/index.ts` - now just contains documentation comment
+	- All types are now imported directly from entity-specific files, not from index
+	- Maintained comprehensive type definitions in each file
+
+- **Middlewares Migration Complete**: All middleware files migrated to TypeScript with full type safety
+	- `src/middlewares/auth.middleware.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Added explicit types for `verifyUser` function parameters
+		- Imported `JwtPayload` and `AuthenticatedRequest` from `../types/auth.js`
+		- Used type assertion `as unknown as JwtPayload` for JWT decryption result
+		- Added proper error handling with typed Error objects
+		- Return type explicitly set to `Promise<void | Response>`
+	- `src/middlewares/error.middlewares.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Imported `CustomError`, `ErrorType`, `ErrorLogData` from `../types/error.js`
+		- Imported `AuthenticatedRequest` from `../types/auth.js`
+		- Added explicit parameter types for errorHandler function
+		- Typed `statusCode`, `userMessage`, `errors`, `errorType`, `logLevel` variables
+		- Used type assertion `(req as any)` for Express-specific properties (ip, connection)
+		- Maintained legacy logging format with proper type safety
+		- Return type explicitly set to `Response`
+	- `src/middlewares/multer.middleware.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Imported types from `../types/multer.js`: `AllowedMimeType`, `DestinationCallback`, `FileNameCallback`, `CustomFileFilter`
+		- Typed storage configuration with `StorageEngine` from multer
+		- Added explicit types for callback parameters in destination and filename functions
+		- Typed fileFilter function with `CustomFileFilter` type
+		- Used readonly array for `allowedMimeTypes` with `AllowedMimeType` type
+		- Properly handled error callbacks with type assertions
+	- `src/middlewares/ratelimit.middleware.ts`:
+		- Removed `@ts-nocheck` pragma
+		- Imported `RateLimitResponse` from `../types/ratelimit.js`
+		- Added explicit types for middleware parameters
+		- Typed response object with `RateLimitResponse` interface
+		- Changed status code from 401 to 429 (proper HTTP status for rate limiting)
+		- Added null-safe check for `req.ip` with fallback to 'unknown'
+		- Return type explicitly set to `Promise<void | Response>`
+
+- Created comprehensive migration plan document (`docs/provider-migration-plan.md`) detailing:
+	- All type definitions required for each provider service
+	- Method signature updates needed
+	- Import statement changes
+	- Testing checklist and post-migration tasks
+	- Reference standards from `client.service.ts`
+- Updated `docs/migration-status.md`: Marked services layer as **Completed** (2025-11-04)
+- All provider services now compile without errors and maintain backward compatibility
+- **Type Organization Improvement**: Extracted all type definitions to dedicated type files:
+	- Created `src/types/email.types.ts` with all email service type definitions
+	- Created `src/types/sms.types.ts` with all SMS service type definitions
+	- Created `src/types/kyc.types.ts` with all KYC service type definitions
+	- Created `src/types/index.ts` for centralized type exports
+	- Updated all provider services to import types from `../../types/*.types.js`
+	- Improved code organization and type reusability across the codebase
+- **Controller Migration**: Migrated `newKyc.controller.ts` to fully typed TypeScript
+	- Removed `@ts-nocheck` pragma
+	- Created `src/types/controller.types.ts` with controller type definitions
+	- Added `SendOtpRequestBody`, `SendOtpRequestQuery`, and `AsyncRequestHandler` types
+	- Updated `sendOtp` controller with explicit parameter and return types
+	- Improved error handling with proper type casting (`error as Error`)
+	- Added JSDoc documentation for the controller function
+	- Enhanced type safety with Express generic types `Request<{}, {}, Body, Query>`
+	- Fixed userAgent handling with fallback empty string
+	- Improved code formatting and TODO comments

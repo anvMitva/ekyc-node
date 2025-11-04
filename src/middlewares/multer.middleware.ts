@@ -1,11 +1,18 @@
-// @ts-nocheck
 import multer from 'multer';
+import type { StorageEngine } from 'multer';
 import path from 'path';
 import fs from 'fs';
+import type { Request } from 'express';
+import type { 
+  AllowedMimeType, 
+  DestinationCallback, 
+  FileNameCallback,
+  CustomFileFilter 
+} from '../types/multer.js';
 
 // Define storage configuration with dynamic destination
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+const storage: StorageEngine = multer.diskStorage({
+  destination: function (req: Request, file: Express.Multer.File, cb: DestinationCallback): void {
     // Define folder based on file type
     const isImage = file.mimetype.startsWith('image/');
     const dest = path.resolve(process.cwd(), 'public', isImage ? 'images' : 'files');
@@ -13,13 +20,12 @@ const storage = multer.diskStorage({
     // Ensure destination exists
     try {
       fs.mkdirSync(dest, { recursive: true });
+      cb(null, dest);
     } catch (err) {
-      return cb(err);
+      cb(err as Error, dest);
     }
-
-    cb(null, dest);
   },
-  filename: function (req, file, cb) {
+  filename: function (req: Request, file: Express.Multer.File, cb: FileNameCallback): void {
     // Get the file extension
     const fileExtension = path.extname(file.originalname);
 
@@ -32,9 +38,9 @@ const storage = multer.diskStorage({
 });
 
 // File filter to allow specific file types
-const fileFilter = (req, file, cb) => {
+const fileFilter: CustomFileFilter = (req, file, cb) => {
   // Allow image, PDF, CSV and Excel files
-  const allowedMimeTypes = [
+  const allowedMimeTypes: readonly AllowedMimeType[] = [
     'image/jpeg',
     'image/png',
     'image/jpg',
@@ -44,10 +50,10 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (allowedMimeTypes.includes(file.mimetype as AllowedMimeType)) {
     cb(null, true); // Accept the file
   } else {
-    cb(new Error("Invalid file type. Only images, PDFs, and CSVs are allowed."), false); // Reject the file
+    cb(new Error("Invalid file type. Only images, PDFs, and CSVs are allowed.")); // Reject the file
   }
 };
 

@@ -1,5 +1,5 @@
-// @ts-nocheck
 import axios from "axios";
+import type { AxiosResponse } from "axios";
 import logger from "../../logger/winston.logger.js";
 import {
   SMS_CONFIG,
@@ -7,12 +7,28 @@ import {
   SMS_TEMPLATE_IDS,
   SMS_TYPES,
 } from "../../config/index.js";
+import type {
+  SmsConfig,
+  SmsTemplates,
+  SmsTemplateIds,
+  SmsType,
+  SmsSendResult,
+  SmsHealthStatus,
+  SmsMetadata,
+  SmsLogData,
+} from "../../types/sms.js";
+
+// ==================== SMS Service Class ====================
 
 /**
  * SMS Service Class
  * Handles SMS operations with API logging capabilities
  */
 class SmsService {
+  private config: SmsConfig;
+  private messageTemplates: SmsTemplates;
+  private templateIds: SmsTemplateIds;
+
   constructor() {
     // SMS Provider Configuration from centralized config
     this.config = {
@@ -51,23 +67,23 @@ class SmsService {
 
   /**
    * Get message template by type
-   * @param {string} type - Template type (signup, mobile, bankUpdate, password, edis, ipvLink, default)
+   * @param {SmsType} type - Template type (signup, mobile, bankUpdate, password, edis, ipvLink, default)
    * @param {string} value - OTP value or link for IPV
    * @returns {string} Formatted message
    * @private
    */
-  _getMessageTemplate(type, value) {
+  private _getMessageTemplate(type: SmsType, value: string): string {
     const template = this.messageTemplates[type] || this.messageTemplates[SMS_TYPES.DEFAULT];
     return template(value);
   }
 
   /**
    * Get template ID by type
-   * @param {string} type - Template type
+   * @param {SmsType} type - Template type
    * @returns {string} Template ID
    * @private
    */
-  _getTemplateId(type) {
+  private _getTemplateId(type: SmsType): string {
     return this.templateIds[type] || this.templateIds.default;
   }
 
@@ -79,7 +95,7 @@ class SmsService {
    * @returns {string} Complete API URL
    * @private
    */
-  _buildApiUrl(mobileNumber, message, tempId) {
+  private _buildApiUrl(mobileNumber: string, message: string, tempId: string): string {
     const params = new URLSearchParams({
       UserID: this.config.userId,
       UserPass: this.config.userPass,
@@ -96,10 +112,10 @@ class SmsService {
 
   /**
    * Log API request and response
-   * @param {Object} logData - Log data
+   * @param {SmsLogData} logData - Log data
    * @private
    */
-  async _logApiCall(logData) {
+  private async _logApiCall(logData: SmsLogData): Promise<void> {
     try {
       // TODO: Implement API logging to database
       // This will store payload, response, and errors
@@ -123,7 +139,8 @@ class SmsService {
       // For now, just log to console/file
       logger.info("SMS API Call Log", logData);
     } catch (error) {
-      logger.error("Error logging SMS API call", { error: error.message });
+      const err = error as Error;
+      logger.error("Error logging SMS API call", { error: err.message });
     }
   }
 
@@ -131,11 +148,16 @@ class SmsService {
    * Send SMS via API
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {string} type - SMS type (mobile, bankUpdate, password, default)
-   * @param {Object} metadata - Additional metadata for logging
-   * @returns {Promise<Object>} API response
+   * @param {SmsType} type - SMS type (mobile, bankUpdate, password, default)
+   * @param {SmsMetadata} metadata - Additional metadata for logging
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendSms(mobileNumber, otp, type = "default", metadata = {}) {
+  async sendSms(
+    mobileNumber: string,
+    otp: string,
+    type: SmsType = "default",
+    metadata: SmsMetadata = {}
+  ): Promise<SmsSendResult> {
     const startTime = Date.now();
     let apiResponse = null;
     let error = null;
@@ -171,7 +193,7 @@ class SmsService {
         provider: this.config.provider,
       });
 
-      const response = await axios.get(apiUrl, {
+      const response: AxiosResponse = await axios.get(apiUrl, {
         timeout: this.config.timeout,
       });
 
@@ -206,8 +228,9 @@ class SmsService {
         duration,
       };
     } catch (err) {
-      error = err;
-      statusCode = err.response?.status || 500;
+      const errObj = err as any;
+      error = errObj;
+      statusCode = errObj.response?.status || 500;
       const duration = Date.now() - startTime;
 
       // Log failed API call
@@ -220,12 +243,12 @@ class SmsService {
           type,
           timestamp: new Date().toISOString(),
         },
-        response: err.response?.data || null,
+        response: errObj.response?.data || null,
         error: {
-          message: err.message,
-          stack: err.stack,
-          code: err.code,
-          response: err.response?.data,
+          message: errObj.message,
+          stack: errObj.stack,
+          code: errObj.code,
+          response: errObj.response?.data,
         },
         status: "failed",
         statusCode,
@@ -238,13 +261,13 @@ class SmsService {
       logger.error("Error sending SMS", {
         mobile: mobileNumber,
         type,
-        error: err.message,
+        error: errObj.message,
         duration: `${duration}ms`,
       });
 
       return {
         success: false,
-        error: err.message,
+        error: errObj.message,
         duration,
       };
     }
@@ -254,10 +277,10 @@ class SmsService {
    * Send OTP SMS (wrapper for backward compatibility)
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {string} type - SMS type
-   * @returns {Promise<Object>} API response
+   * @param {SmsType} type - SMS type
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendOtp(mobileNumber, otp, type = SMS_TYPES.DEFAULT) {
+  async sendOtp(mobileNumber: string, otp: string, type: SmsType = SMS_TYPES.DEFAULT as SmsType): Promise<SmsSendResult> {
     return await this.sendSms(mobileNumber, otp, type);
   }
 
@@ -265,66 +288,66 @@ class SmsService {
    * Send signup OTP
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendSignupOtp(mobileNumber, otp, metadata = {}) {
-    return await this.sendSms(mobileNumber, otp, SMS_TYPES.SIGNUP, metadata);
+  async sendSignupOtp(mobileNumber: string, otp: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, otp, SMS_TYPES.SIGNUP as SmsType, metadata);
   }
 
   /**
    * Send mobile update OTP
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendMobileUpdateOtp(mobileNumber, otp, metadata = {}) {
-    return await this.sendSms(mobileNumber, otp, SMS_TYPES.MOBILE_UPDATE, metadata);
+  async sendMobileUpdateOtp(mobileNumber: string, otp: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, otp, SMS_TYPES.MOBILE_UPDATE as SmsType, metadata);
   }
 
   /**
    * Send bank update OTP
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendBankUpdateOtp(mobileNumber, otp, metadata = {}) {
-    return await this.sendSms(mobileNumber, otp, SMS_TYPES.BANK_UPDATE, metadata);
+  async sendBankUpdateOtp(mobileNumber: string, otp: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, otp, SMS_TYPES.BANK_UPDATE as SmsType, metadata);
   }
 
   /**
    * Send password reset OTP
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendPasswordResetOtp(mobileNumber, otp, metadata = {}) {
-    return await this.sendSms(mobileNumber, otp, SMS_TYPES.PASSWORD_RESET, metadata);
+  async sendPasswordResetOtp(mobileNumber: string, otp: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, otp, SMS_TYPES.PASSWORD_RESET as SmsType, metadata);
   }
 
   /**
    * Send EDIS OTP
    * @param {string} mobileNumber - Mobile number
    * @param {string} otp - OTP value
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendEdisOtp(mobileNumber, otp, metadata = {}) {
-    return await this.sendSms(mobileNumber, otp, SMS_TYPES.EDIS, metadata);
+  async sendEdisOtp(mobileNumber: string, otp: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, otp, SMS_TYPES.EDIS as SmsType, metadata);
   }
 
   /**
    * Send IPV link via SMS
    * @param {string} mobileNumber - Mobile number
    * @param {string} link - IPV link
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendIpvLink(mobileNumber, link, metadata = {}) {
-    return await this.sendSms(mobileNumber, link, SMS_TYPES.IPV_LINK, metadata);
+  async sendIpvLink(mobileNumber: string, link: string, metadata: SmsMetadata = {}): Promise<SmsSendResult> {
+    return await this.sendSms(mobileNumber, link, SMS_TYPES.IPV_LINK as SmsType, metadata);
   }
 
   /**
@@ -332,10 +355,15 @@ class SmsService {
    * @param {string} mobileNumber - Mobile number
    * @param {string} message - Custom message
    * @param {string} tempId - Template ID
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} API response
+   * @param {SmsMetadata} metadata - Additional metadata
+   * @returns {Promise<SmsSendResult>} API response
    */
-  async sendCustomSms(mobileNumber, message, tempId, metadata = {}) {
+  async sendCustomSms(
+    mobileNumber: string,
+    message: string,
+    tempId: string,
+    metadata: SmsMetadata = {}
+  ): Promise<SmsSendResult> {
     const startTime = Date.now();
     let apiResponse = null;
     let error = null;
@@ -350,6 +378,8 @@ class SmsService {
 
       const payload = {
         mobileNumber,
+        otp: "N/A",
+        type: "custom",
         message,
         tempId,
         timestamp: new Date().toISOString(),
@@ -360,7 +390,7 @@ class SmsService {
         provider: this.config.provider,
       });
 
-      const response = await axios.get(apiUrl, {
+      const response: AxiosResponse = await axios.get(apiUrl, {
         timeout: this.config.timeout,
       });
 
@@ -389,19 +419,27 @@ class SmsService {
         duration,
       };
     } catch (err) {
-      error = err;
-      statusCode = err.response?.status || 500;
+      const errObj = err as any;
+      error = errObj;
+      statusCode = errObj.response?.status || 500;
       const duration = Date.now() - startTime;
 
       await this._logApiCall({
         mobile: mobileNumber,
         type: "custom",
-        payload: { mobileNumber, message, tempId },
-        response: err.response?.data || null,
+        payload: {
+          mobileNumber,
+          otp: "N/A",
+          type: "custom",
+          message,
+          tempId,
+          timestamp: new Date().toISOString(),
+        },
+        response: errObj.response?.data || null,
         error: {
-          message: err.message,
-          stack: err.stack,
-          code: err.code,
+          message: errObj.message,
+          stack: errObj.stack,
+          code: errObj.code,
         },
         status: "failed",
         statusCode,
@@ -413,12 +451,12 @@ class SmsService {
 
       logger.error("Error sending custom SMS", {
         mobile: mobileNumber,
-        error: err.message,
+        error: errObj.message,
       });
 
       return {
         success: false,
-        error: err.message,
+        error: errObj.message,
         statusCode,
         duration,
       };
@@ -430,16 +468,16 @@ class SmsService {
    * @param {string} mobileNumber - Mobile number
    * @returns {boolean} Is valid
    */
-  validateMobileNumber(mobileNumber) {
+  validateMobileNumber(mobileNumber: string): boolean {
     const mobileRegex = /^[6-9]\d{9}$/;
     return mobileRegex.test(mobileNumber);
   }
 
   /**
    * Get service health status
-   * @returns {Object} Health status
+   * @returns {SmsHealthStatus} Health status
    */
-  getHealthStatus() {
+  getHealthStatus(): SmsHealthStatus {
     return {
       service: "SMS",
       provider: this.config.provider,
@@ -455,10 +493,10 @@ class SmsService {
 
   /**
    * Get available SMS types
-   * @returns {Object} Available SMS types
+   * @returns {Record<string, SmsType>} Available SMS types
    */
-  getAvailableTypes() {
-    return SMS_TYPES;
+  getAvailableTypes(): Record<string, SmsType> {
+    return SMS_TYPES as Record<string, SmsType>;
   }
 }
 
