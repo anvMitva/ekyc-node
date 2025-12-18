@@ -10,11 +10,13 @@ class ActivityLogDB {
   /**
    * Create a new activity log entry
    * @param {Object} logData - Activity log data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Created activity log
    */
-  async create(logData) {
+  async create(logData, transaction = null) {
     try {
-      const log = await ActivityLog.create(logData);
+      const options = transaction ? { transaction } : {};
+      const log = await ActivityLog.create(logData, options);
       return log;
     } catch (error) {
       throw new Error(`Error creating activity log: ${error.message}`);

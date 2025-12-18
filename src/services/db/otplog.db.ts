@@ -10,11 +10,13 @@ class OtpLogDB {
   /**
    * Create a new OTP log entry
    * @param {Object} logData - OTP log data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Created OTP log
    */
-  async create(logData) {
+  async create(logData, transaction = null) {
     try {
-      const log = await OTPLog.create(logData);
+      const options = transaction ? { transaction } : {};
+      const log = await OTPLog.create(logData, options);
       return log;
     } catch (error) {
       throw new Error(`Error creating OTP log: ${error.message}`);

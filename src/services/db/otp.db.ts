@@ -10,11 +10,13 @@ class OtpDB {
   /**
    * Create a new OTP record
    * @param {Object} otpData - OTP data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Created OTP
    */
-  async create(otpData) {
+  async create(otpData, transaction = null) {
     try {
-      const otp = await OTP.create(otpData);
+      const options = transaction ? { transaction } : {};
+      const otp = await OTP.create(otpData, options);
       return otp;
     } catch (error) {
       throw new Error(`Error creating OTP: ${error.message}`);

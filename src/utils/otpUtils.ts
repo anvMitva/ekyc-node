@@ -1,6 +1,6 @@
 // @ts-nocheck
 import crypto from 'crypto';
-import { ENCRYPTION_CONFIG } from '../config';
+import { ENCRYPTION_CONFIG } from '../config/index.js';
 
 export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import {
-  checkIfKycExists,
+  checkIfKycExistsAndAddLead,
   checkMobileEmailUniqueness,
   fetchClientDeviceData,
 } from "../services/client.service.js";
@@ -13,6 +13,7 @@ import type {
   SendOtpRequestBody,
   SendOtpRequestQuery,
 } from "../types/newKyc.js";
+import { sendOtpEmailMobile } from "../services/otp.service.js";
 
 /**
  * Send OTP Controller
@@ -43,40 +44,23 @@ export const sendOtp = async (
 
     const deviceData = await fetchClientDeviceData(ip, userAgent);
 
-    const { matchedData, emailMatches, mobileMatches } =
-      await checkMobileEmailUniqueness({
-        email,
-        mobile,
-        deviceData,
-        apCode,
-      });
+    const { matchedData, emailMatches, mobileMatches } = await checkMobileEmailUniqueness({
+      email, mobile, deviceData, apCode,
+    });
 
     // Check if KYC exists and upsert lead in one function
-    const leadUid = await checkIfKycExists({
-      mobile,
-      email,
-      apCode,
-      rmCode,
-      schemeCode,
-      referralCode,
-      source,
-      deviceData,
-      ip,
-      userAgent,
-      transaction,
+    const leadUid = await checkIfKycExistsAndAddLead({
+      mobile, email, apCode, rmCode, schemeCode, referralCode, source, deviceData, ip, userAgent, transaction,
     });
-    
+
     logger.info("Lead operation completed", {
       uid: leadUid,
     });
 
-    // otp 
-    // sms
-    // email
-    // activity log
-    // service prefrence based
+    await sendOtpEmailMobile({
+      mobile, email, uid: leadUid, ip, userAgent, device: deviceData?.device.browser, location: `${deviceData?.location.latitude}-${deviceData?.location.longitude}`, transaction,
+    });
 
-    // Commit transaction
     await transaction.commit();
 
     return res
@@ -84,14 +68,16 @@ export const sendOtp = async (
       .json(new ApiResponse(200, {}, "OTP sent successfully"));
   } catch (error) {
     // Rollback transaction on error
-    await transaction.rollback();
-    
+    if (transaction) {
+      await transaction.rollback();
+    }
+
     const err = error as Error;
     logger.error("Error in sendOtp controller", {
       error: err.message,
       stack: err.stack,
     });
-    
+
     next(error);
   }
 };

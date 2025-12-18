@@ -10,11 +10,13 @@ class LastActivityDB {
   /**
    * Create a new last activity record
    * @param {Object} activityData - Last activity data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Created last activity
    */
-  async create(activityData) {
+  async create(activityData, transaction = null) {
     try {
-      const activity = await LastActivity.create(activityData);
+      const options = transaction ? { transaction } : {};
+      const activity = await LastActivity.create(activityData, options);
       return activity;
     } catch (error) {
       throw new Error(`Error creating last activity: ${error.message}`);
@@ -25,17 +27,20 @@ class LastActivityDB {
    * Create or update last activity (upsert)
    * @param {Object} criteria - Search criteria
    * @param {Object} activityData - Activity data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Activity and created flag
    */
-  async upsert(criteria, activityData) {
+  async upsert(criteria, activityData, transaction = null) {
     try {
+      const options = transaction ? { transaction } : {};
       const [activity, created] = await LastActivity.findOrCreate({
         where: criteria,
         defaults: activityData,
+        ...options,
       });
 
       if (!created) {
-        await activity.update(activityData);
+        await activity.update(activityData, options);
       }
 
       return { activity, created };
@@ -49,13 +54,15 @@ class LastActivityDB {
    * @param {string} uid - User UID
    * @param {string} activityName - Activity name
    * @param {Object} activityData - Activity data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Activity and created flag
    */
-  async upsertByUidAndActivity(uid, activityName, activityData) {
+  async upsertByUidAndActivity(uid, activityName, activityData, transaction = null) {
     try {
       return await this.upsert(
         { uid, activityName },
-        { ...activityData, uid, activityName }
+        { ...activityData, uid, activityName },
+        transaction
       );
     } catch (error) {
       throw new Error(`Error upserting last activity by UID and activity: ${error.message}`);
@@ -67,13 +74,15 @@ class LastActivityDB {
    * @param {string} kycId - KYC ID
    * @param {string} activityName - Activity name
    * @param {Object} activityData - Activity data
+   * @param {Object} transaction - Sequelize transaction (optional)
    * @returns {Promise<Object>} Activity and created flag
    */
-  async upsertByKycIdAndActivity(kycId, activityName, activityData) {
+  async upsertByKycIdAndActivity(kycId, activityName, activityData, transaction = null) {
     try {
       return await this.upsert(
         { kycId, activityName },
-        { ...activityData, kycId, activityName }
+        { ...activityData, kycId, activityName },
+        transaction
       );
     } catch (error) {
       throw new Error(`Error upserting last activity by KYC ID and activity: ${error.message}`);

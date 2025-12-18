@@ -41,6 +41,7 @@ export async function checkMobileEmailUniqueness({ email, mobile, deviceData, ap
       throw new ApiError(400, "Email already exists", []);
     }
 
+    // TODO: add this data in table for relation mapping
     return {
       matchedData,
       emailMatches: matchedData.emailMatches.length > 1,
@@ -127,24 +128,15 @@ export async function fetchClientDeviceData(ip: string, userAgent: string): Prom
   }
 }
 
-export async function checkIfKycExists({
-  mobile,
-  email,
-  apCode,
-  rmCode,
-  schemeCode,
-  referralCode,
-  source,
-  deviceData,
-  ip,
-  userAgent,
-  transaction = null,
+export async function checkIfKycExistsAndAddLead({
+  mobile, email, apCode, rmCode, schemeCode, referralCode, source, deviceData, ip, userAgent, transaction = null,
 }: CheckKycExistsParams): Promise<string> {
   try {
-  const kycData = await kycDb.findPendingKYCByMobileOrEmail(mobile, email);
-  const hasPendingKyc = typeof kycData === "number" ? kycData > 0 : Boolean(kycData);
+    const kycData = await kycDb.findPendingKYCByMobileOrEmail(mobile, email);
+    const hasPendingKyc = typeof kycData === "number" ? kycData > 0 : Boolean(kycData);
 
-  if (hasPendingKyc) {
+    // TODO: option to continue even if KYC exists 
+    if (hasPendingKyc) {
       logger.warn("KYC already exists", { mobile, email });
       throw new ApiError(400, "KYC already exists", []);
     }
