@@ -8,6 +8,8 @@ import OTPLog from "./models/otplog.model.js";
 import LastActivity from "./models/lastactivity.model.js";
 import ActivityLog from "./models/activitylog.model.js";
 import KYC from "./models/kyc.model.js";
+import ProviderLog from "./models/provider/providerLog.model.js";
+import Provider from "./models/provider/provider.model.js";
 
 dotenv.config({
   path: "./.env",
@@ -15,6 +17,9 @@ dotenv.config({
 
 try {
   startApp();
+
+  Provider.sync();
+  ProviderLog.sync();
 } catch (error) {
   throw error;
 }

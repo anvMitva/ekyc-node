@@ -1,13 +1,13 @@
 import logger from "../logger/winston.logger.js";
 import { ApiError } from "../utils/ApiError.js";
 import { generateOTP } from "../utils/otpUtils.js";
-import SmsService from "./providers/sms.service.js";
 import EmailService from "./providers/email.service.js";
 import OtpDB from "./db/otp.db.js";
 import OtpLogDB from "./db/otplog.db.js";
 import ActivityLogDB from "./db/activitylog.db.js";
 import LastActivityDB from "./db/lastactivity.db.js";
 import type { Transaction } from "sequelize";
+import { smsService } from "../providers/index.js";
 
 interface SendOtpParams {
     uid?: string;
@@ -57,7 +57,7 @@ export async function sendOtpEmailMobile(params: SendOtpParams): Promise<OtpSend
         logger.info("Generating and sending OTP", { uid, mobile, email });
 
         // Send SMS OTP
-        const smsResult = await SmsService.sendSignupOtp(mobile, otp, {
+        const smsResult = await smsService.sendSignupOtp(mobile, otp, {
             uid,
             ip,
             userAgent,

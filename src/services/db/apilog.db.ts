@@ -1,35 +1,7 @@
 // @ts-nocheck
 import { Op } from "sequelize";
-// TODO: Import ApiLog model when created
-// import { ApiLog } from "../../models/index.js";
+import { ApiLog } from "../../models/index.js";
 
-/**
- * Database operations for API Log model
- * Handles CRUD operations for API call logging
- * 
- * TODO: Create ApiLog model with following structure:
- * - id (primary key)
- * - service (string) - SMS, EMAIL, PAN, KRA, etc.
- * - provider (string) - OnlySMS, Nodemailer, Digio, etc.
- * - api_endpoint (string) - API URL
- * - mobile (string) - Mobile number (if applicable)
- * - email (string) - Email address (if applicable)
- * - type (string) - API call type
- * - request_payload (JSON/TEXT) - Request data (masked sensitive info)
- * - response_data (JSON/TEXT) - Response data
- * - error_data (JSON/TEXT) - Error details if failed
- * - status (string) - success, failed, pending
- * - status_code (integer) - HTTP status code
- * - duration (integer) - API call duration in ms
- * - ip_address (string) - Client IP
- * - user_agent (text) - User agent
- * - uid (string) - User UID
- * - kyc_id (string) - KYC ID (if applicable)
- * - reference_id (string) - External reference ID
- * - retry_count (integer) - Number of retries
- * - created_at (timestamp)
- * - updated_at (timestamp)
- */
 class ApiLogDB {
   /**
    * Create a new API log entry
@@ -38,12 +10,8 @@ class ApiLogDB {
    */
   async create(logData) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // const log = await ApiLog.create(logData);
-      // return log;
-      
-      console.log("API Log (TODO - Save to DB):", logData);
-      return { id: Date.now(), ...logData };
+      const log = await ApiLog.create(logData);
+      return log;
     } catch (error) {
       throw new Error(`Error creating API log: ${error.message}`);
     }
@@ -56,12 +24,8 @@ class ApiLogDB {
    */
   async bulkCreate(logsData) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // const logs = await ApiLog.bulkCreate(logsData);
-      // return logs;
-      
-      console.log("Bulk API Logs (TODO - Save to DB):", logsData.length, "entries");
-      return logsData.map((log, idx) => ({ id: Date.now() + idx, ...log }));
+      const logs = await ApiLog.bulkCreate(logsData);
+      return logs;
     } catch (error) {
       throw new Error(`Error bulk creating API logs: ${error.message}`);
     }
@@ -74,10 +38,7 @@ class ApiLogDB {
    */
   async findById(id) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findByPk(id);
-      
-      return null;
+      return await ApiLog.findByPk(id);
     } catch (error) {
       throw new Error(`Error finding API log by ID: ${error.message}`);
     }
@@ -92,16 +53,13 @@ class ApiLogDB {
   async findByService(service, options = {}) {
     try {
       const { limit = 100, offset = 0 } = options;
-      
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: { service },
-      //   limit,
-      //   offset,
-      //   order: [["created_at", "DESC"]],
-      // });
-      
-      return [];
+
+      return await ApiLog.findAll({
+        where: { service },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+      });
     } catch (error) {
       throw new Error(`Error finding API logs by service: ${error.message}`);
     }
@@ -116,16 +74,13 @@ class ApiLogDB {
   async findByUid(uid, options = {}) {
     try {
       const { limit = 100, offset = 0 } = options;
-      
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: { uid },
-      //   limit,
-      //   offset,
-      //   order: [["created_at", "DESC"]],
-      // });
-      
-      return [];
+
+      return await ApiLog.findAll({
+        where: { uid },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+      });
     } catch (error) {
       throw new Error(`Error finding API logs by UID: ${error.message}`);
     }
@@ -140,16 +95,13 @@ class ApiLogDB {
   async findByMobile(mobile, options = {}) {
     try {
       const { limit = 100, offset = 0 } = options;
-      
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: { mobile },
-      //   limit,
-      //   offset,
-      //   order: [["created_at", "DESC"]],
-      // });
-      
-      return [];
+
+      return await ApiLog.findAll({
+        where: { mobile },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+      });  
     } catch (error) {
       throw new Error(`Error finding API logs by mobile: ${error.message}`);
     }
@@ -164,16 +116,13 @@ class ApiLogDB {
   async findByStatus(status, options = {}) {
     try {
       const { limit = 100, offset = 0 } = options;
-      
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: { status },
-      //   limit,
-      //   offset,
-      //   order: [["created_at", "DESC"]],
-      // });
-      
-      return [];
+
+      return await ApiLog.findAll({
+        where: { status },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+      });
     } catch (error) {
       throw new Error(`Error finding API logs by status: ${error.message}`);
     }
@@ -202,20 +151,17 @@ class ApiLogDB {
   async findByDateRange(startDate, endDate, options = {}) {
     try {
       const { limit = 100, offset = 0 } = options;
-      
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: {
-      //     created_at: {
-      //       [Op.between]: [startDate, endDate],
-      //     },
-      //   },
-      //   limit,
-      //   offset,
-      //   order: [["created_at", "DESC"]],
-      // });
-      
-      return [];
+
+      return await ApiLog.findAll({
+        where: {
+          created_at: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
+        limit,
+        offset,
+        order: [["created_at", "DESC"]],
+      });
     } catch (error) {
       throw new Error(`Error finding API logs by date range: ${error.message}`);
     }
@@ -235,15 +181,12 @@ class ApiLogDB {
         order = [["created_at", "DESC"]],
       } = options;
 
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAll({
-      //   where: filters,
-      //   limit,
-      //   offset,
-      //   order,
-      // });
-      
-      return [];
+      return await ApiLog.findAll({
+        where: filters,
+        limit,
+        offset,
+        order,
+      });
     } catch (error) {
       throw new Error(`Error finding API logs: ${error.message}`);
     }
@@ -263,15 +206,12 @@ class ApiLogDB {
         order = [["created_at", "DESC"]],
       } = options;
 
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.findAndCountAll({
-      //   where: filters,
-      //   limit,
-      //   offset,
-      //   order,
-      // });
-      
-      return { rows: [], count: 0 };
+      return await ApiLog.findAndCountAll({
+        where: filters,
+        limit,
+        offset,
+        order,
+      });
     } catch (error) {
       throw new Error(`Error finding and counting API logs: ${error.message}`);
     }
@@ -285,15 +225,12 @@ class ApiLogDB {
    */
   async update(id, updateData) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // const log = await ApiLog.findByPk(id);
-      // if (!log) {
-      //   throw new Error("API log not found");
-      // }
-      // await log.update(updateData);
-      // return log;
-      
-      return { id, ...updateData };
+      const log = await ApiLog.findByPk(id);
+      if (!log) {
+        throw new Error("API log not found");
+      }
+      await log.update(updateData);
+      return log;
     } catch (error) {
       throw new Error(`Error updating API log: ${error.message}`);
     }
@@ -306,14 +243,11 @@ class ApiLogDB {
    */
   async delete(id) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // const log = await ApiLog.findByPk(id);
-      // if (!log) {
-      //   throw new Error("API log not found");
-      // }
-      // await log.destroy();
-      // return true;
-      
+      const log = await ApiLog.findByPk(id);
+      if (!log) {
+        throw new Error("API log not found");
+      }
+      await log.destroy();
       return true;
     } catch (error) {
       throw new Error(`Error deleting API log: ${error.message}`);
@@ -329,18 +263,15 @@ class ApiLogDB {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      
-      // TODO: Implement after creating ApiLog model
-      // const count = await ApiLog.destroy({
-      //   where: {
-      //     created_at: {
-      //       [Op.lt]: cutoffDate,
-      //     },
-      //   },
-      // });
-      // return count;
-      
-      return 0;
+
+      const count = await ApiLog.destroy({
+        where: {
+          created_at: {
+            [Op.lt]: cutoffDate,
+          },
+        },
+      });
+      return count;
     } catch (error) {
       throw new Error(`Error deleting old logs: ${error.message}`);
     }
@@ -353,32 +284,23 @@ class ApiLogDB {
    */
   async getStatistics(filters = {}) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // const [total, successful, failed] = await Promise.all([
-      //   ApiLog.count({ where: filters }),
-      //   ApiLog.count({ where: { ...filters, status: "success" } }),
-      //   ApiLog.count({ where: { ...filters, status: "failed" } }),
-      // ]);
-      
-      // const avgDuration = await ApiLog.findOne({
-      //   where: filters,
-      //   attributes: [[ApiLog.sequelize.fn("AVG", ApiLog.sequelize.col("duration")), "avgDuration"]],
-      // });
-      
-      // return {
-      //   total,
-      //   successful,
-      //   failed,
-      //   successRate: total > 0 ? (successful / total) * 100 : 0,
-      //   avgDuration: avgDuration?.avgDuration || 0,
-      // };
-      
+      const [total, successful, failed] = await Promise.all([
+        ApiLog.count({ where: filters }),
+        ApiLog.count({ where: { ...filters, status: "success" } }),
+        ApiLog.count({ where: { ...filters, status: "failed" } }),
+      ]);
+
+      const avgDuration = await ApiLog.findOne({
+        where: filters,
+        attributes: [[ApiLog.sequelize.fn("AVG", ApiLog.sequelize.col("duration")), "avgDuration"]],
+      });
+
       return {
-        total: 0,
-        successful: 0,
-        failed: 0,
-        successRate: 0,
-        avgDuration: 0,
+        total,
+        successful,
+        failed,
+        successRate: total > 0 ? (successful / total) * 100 : 0,
+        avgDuration: avgDuration?.avgDuration || 0,
       };
     } catch (error) {
       throw new Error(`Error getting API statistics: ${error.message}`);
@@ -392,10 +314,7 @@ class ApiLogDB {
    */
   async count(filters = {}) {
     try {
-      // TODO: Implement after creating ApiLog model
-      // return await ApiLog.count({ where: filters });
-      
-      return 0;
+      return await ApiLog.count({ where: filters });
     } catch (error) {
       throw new Error(`Error counting API logs: ${error.message}`);
     }
